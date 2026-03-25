@@ -347,6 +347,7 @@ export default function DashboardPage() {
     // Always re-fetch fresh data on load to pick up any admin changes
     const email = sessionStorage.getItem(EMAIL_KEY)
     if (email) {
+      setAuthEmail(email)
       fetch('/api/dashboard/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -354,9 +355,11 @@ export default function DashboardPage() {
       })
         .then((r) => r.ok ? r.json() : null)
         .then((fresh) => {
-          if (fresh) {
+          // Only update if we got real dashboard data (not a requiresPassword stub)
+          if (fresh?.applicant) {
             sessionStorage.setItem(SESSION_KEY, JSON.stringify(fresh))
             setDashboardData(fresh)
+            if (fresh.mustSetPassword) setMustSetPassword(true)
           }
         })
         .catch(() => {})
