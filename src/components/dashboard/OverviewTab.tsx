@@ -153,8 +153,8 @@ function WelcomeCard({
           WELCOME BACK
         </p>
         <h2
-          className="text-2xl sm:text-3xl font-bold text-white mb-3 leading-snug"
-          style={{ fontFamily: 'var(--font-display)' }}
+          className="text-2xl sm:text-3xl font-bold mb-3 leading-snug"
+          style={{ fontFamily: 'var(--font-display)', color: 'var(--dc-text-1)' }}
         >
           Hey {name.split(' ')[0]}, you&apos;re in{' '}
           <span style={{ color: 'var(--dc-welcome-link-txt)' }}>{teamName ?? 'your team'}</span>
