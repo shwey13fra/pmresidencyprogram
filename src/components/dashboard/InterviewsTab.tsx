@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { Applicant, Teammate } from './OverviewTab'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -25,6 +25,85 @@ function formatDate(iso: string) {
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+}
+
+// ── Mic button ─────────────────────────────────────────────────────────────
+
+function MicButton({ onAppend }: { onAppend: (text: string) => void }) {
+  const [listening, setListening] = useState(false)
+  const [supported, setSupported] = useState(false)
+  const recRef = useRef<any>(null)
+
+  useEffect(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    setSupported(!!SR)
+  }, [])
+
+  function toggle() {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) return
+
+    if (listening) {
+      recRef.current?.stop()
+      setListening(false)
+      return
+    }
+
+    const rec = new SR()
+    rec.lang = 'en-IN'
+    rec.interimResults = false
+    rec.continuous = true
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as SpeechRecognitionResultList)
+        .filter((r: any) => r.isFinal)
+        .map((r: any) => r[0].transcript as string)
+        .join(' ')
+        .trim()
+      if (transcript) onAppend(transcript)
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    recRef.current = rec
+    rec.start()
+    setListening(true)
+  }
+
+  if (!supported) return null
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={listening ? 'Stop recording' : 'Voice input'}
+      className="flex items-center justify-center rounded-lg transition-all shrink-0"
+      style={{
+        width: 30, height: 30,
+        background: listening ? 'rgba(220,38,38,0.12)' : 'var(--dc-note)',
+        border: `1.5px solid ${listening ? '#dc2626' : 'var(--dc-border)'}`,
+        color: listening ? '#dc2626' : 'var(--dc-text-3)',
+      }}
+    >
+      {listening ? (
+        // Pulsing stop icon
+        <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <span
+            style={{
+              width: 8, height: 8, borderRadius: '50%', background: '#dc2626',
+              animation: 'pulse 1s ease-in-out infinite',
+            }}
+          />
+        </span>
+      ) : (
+        // Mic icon
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      )}
+    </button>
+  )
 }
 
 // ── Interview Card ─────────────────────────────────────────────────────────
@@ -153,6 +232,14 @@ function AddInterviewForm({
     outline: 'none',
   }
 
+  function appendToInsight(text: string) {
+    setInsight((prev) => prev ? `${prev} ${text}` : text)
+  }
+
+  function appendToNotes(text: string) {
+    setNotes((prev) => prev ? `${prev} ${text}` : text)
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -189,7 +276,10 @@ function AddInterviewForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium" style={{ color: 'var(--dc-text-2)' }}>Key Insight</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium" style={{ color: 'var(--dc-text-2)' }}>Key Insight</label>
+          <MicButton onAppend={appendToInsight} />
+        </div>
         <input
           type="text"
           value={insight}
@@ -202,7 +292,10 @@ function AddInterviewForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium" style={{ color: 'var(--dc-text-2)' }}>Notes</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium" style={{ color: 'var(--dc-text-2)' }}>Notes</label>
+          <MicButton onAppend={appendToNotes} />
+        </div>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
