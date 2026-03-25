@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('teams')
-    .select('*, applicants(id, name, status)')
+    .select('*, problem_id, applicants(id, name, status)')
     .order('created_at', { ascending: true })
 
   if (error) {
@@ -21,6 +21,21 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ teams: data })
+}
+
+export async function PATCH(req: NextRequest) {
+  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { id, problem_id, pm_feedback } = await req.json()
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const update: Record<string, unknown> = {}
+  if (problem_id !== undefined) update.problem_id = problem_id || null
+  if (pm_feedback !== undefined) update.pm_feedback = pm_feedback
+
+  const { error } = await supabaseAdmin.from('teams').update(update).eq('id', id)
+  if (error) return NextResponse.json({ error: 'Failed to update team' }, { status: 500 })
+  return NextResponse.json({ success: true })
 }
 
 export async function POST(req: NextRequest) {

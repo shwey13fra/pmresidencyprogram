@@ -4,6 +4,8 @@ import AdminLogin from '@/components/admin/AdminLogin'
 import StatsBar from '@/components/admin/StatsBar'
 import ApplicantTable from '@/components/admin/ApplicantTable'
 import TeamManager from '@/components/admin/TeamManager'
+import StartupProblems from '@/components/admin/StartupProblems'
+import type { Problem } from '@/components/admin/StartupProblems'
 
 interface Applicant {
   id: string
@@ -23,6 +25,7 @@ interface Applicant {
 interface Team {
   id: string
   name: string
+  problem_id?: string | null
   applicants?: { id: string; name: string; status: string }[]
 }
 
@@ -30,6 +33,7 @@ export default function AdminPage() {
   const [adminKey, setAdminKey] = useState<string | null>(null)
   const [applicants, setApplicants] = useState<Applicant[]>([])
   const [teams, setTeams] = useState<Team[]>([])
+  const [problems, setProblems] = useState<Problem[]>([])
   const [loading, setLoading] = useState(false)
 
   // Check localStorage on mount
@@ -40,9 +44,10 @@ export default function AdminPage() {
 
   const fetchData = useCallback(async (key: string) => {
     setLoading(true)
-    const [appRes, teamRes] = await Promise.all([
+    const [appRes, teamRes, problemRes] = await Promise.all([
       fetch('/api/admin/applicants', { headers: { 'x-admin-key': key } }),
       fetch('/api/admin/teams', { headers: { 'x-admin-key': key } }),
+      fetch('/api/admin/problems', { headers: { 'x-admin-key': key } }),
     ])
 
     if (appRes.status === 401) {
@@ -54,8 +59,10 @@ export default function AdminPage() {
 
     const appData = await appRes.json()
     const teamData = await teamRes.json()
+    const problemData = await problemRes.json()
     setApplicants(appData.applicants ?? [])
     setTeams(teamData.teams ?? [])
+    setProblems(problemData.problems ?? [])
     setLoading(false)
   }, [])
 
@@ -112,8 +119,12 @@ export default function AdminPage() {
             <TeamManager
               teams={teams}
               adminKey={adminKey}
+              problems={problems}
               onRefresh={() => fetchData(adminKey)}
             />
+            <div className="mt-10">
+              <StartupProblems adminKey={adminKey} initialProblems={problems} onProblemsChange={setProblems} onRefresh={() => fetchData(adminKey)} />
+            </div>
           </>
         )}
       </div>

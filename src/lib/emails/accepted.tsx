@@ -3,11 +3,13 @@ export function acceptanceEmailHtml({
   teamName,
   teammateNames = [],
   statusUrl,
+  siteUrl,
 }: {
   name: string
   teamName?: string
   teammateNames?: string[]
   statusUrl: string
+  siteUrl?: string
 }) {
   const teamSection = teamName
     ? `
@@ -34,6 +36,11 @@ export function acceptanceEmailHtml({
               You've been selected for the Micro-PM Residency.
             </p>
             ${teamSection}
+            ${siteUrl ? `
+            <div style="background:#fff8f2;border-radius:8px;padding:16px 20px;margin:0 0 24px;border:1px solid #fde8c8;">
+              <p style="margin:0 0 6px;font-size:13px;color:#64748b;">Access your participant dashboard</p>
+              <a href="${siteUrl}/dashboard" style="font-size:14px;font-weight:600;color:#e8913a;text-decoration:none;">${siteUrl}/dashboard →</a>
+            </div>` : ''}
             <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#1a1a2e;">The weekend schedule (IST):</p>
             <table width="100%" style="margin:0 0 24px;font-size:13px;color:#64748b;border-collapse:collapse;">
               <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;"><strong style="color:#1a1a2e;">Friday</strong></td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">6:00 PM – 8:00 PM</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">Problem brief + team formation</td></tr>

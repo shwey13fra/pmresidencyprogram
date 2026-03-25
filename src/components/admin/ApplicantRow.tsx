@@ -46,6 +46,8 @@ export default function ApplicantRow({
   const [toast, setToast] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [updatingTeam, setUpdatingTeam] = useState(false)
+  const [tasksSeeded, setTasksSeeded] = useState(false)
+  const [checklistSeeded, setChecklistSeeded] = useState(false)
 
   function showToast(msg: string) {
     setToast(msg)
@@ -122,7 +124,7 @@ export default function ApplicantRow({
           <td colSpan={6} className="px-6 py-6">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Left: contact + answers */}
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 <div>
                   <p className="text-xs text-slate uppercase tracking-widest mb-1">Phone</p>
                   <p className="text-sm text-primary">+91 {applicant.phone}</p>
@@ -187,6 +189,62 @@ export default function ApplicantRow({
                     ))}
                   </select>
                 </div>
+
+                {/* Seed buttons — only for accepted applicants with a team */}
+                {applicant.status === 'accepted' && applicant.team_id && (
+                  <div>
+                    <p className="text-xs text-slate uppercase tracking-widest mb-2">Dashboard Setup</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        disabled={tasksSeeded}
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          const res = await fetch('/api/admin/seed-tasks', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+                            body: JSON.stringify({ team_id: applicant.team_id }),
+                          })
+                          if (res.ok) {
+                            setTasksSeeded(true)
+                            showToast(`Default tasks created for ${applicant.teams?.name ?? 'team'}.`)
+                          } else {
+                            showToast('Failed to seed tasks.')
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={tasksSeeded
+                          ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+                          : { background: '#fff', color: '#1a1a2e', borderColor: '#e5e7eb' }}
+                      >
+                        {tasksSeeded ? 'Tasks Seeded ✓' : 'Seed Tasks'}
+                      </button>
+
+                      <button
+                        disabled={checklistSeeded}
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          const res = await fetch('/api/admin/seed-checklist', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+                            body: JSON.stringify({ applicant_id: applicant.id }),
+                          })
+                          if (res.ok) {
+                            setChecklistSeeded(true)
+                            showToast(`Checklist created for ${applicant.name}.`)
+                          } else {
+                            showToast('Failed to seed checklist.')
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all border disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={checklistSeeded
+                          ? { background: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }
+                          : { background: '#fff', color: '#1a1a2e', borderColor: '#e5e7eb' }}
+                      >
+                        {checklistSeeded ? 'Checklist Seeded ✓' : 'Seed Checklist'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {toast && (
                   <div className="bg-primary/5 border border-primary/10 rounded-lg px-4 py-3 text-sm text-primary">

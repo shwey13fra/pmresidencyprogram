@@ -5,18 +5,25 @@ import Button from '@/components/shared/Button'
 
 type Status = 'new' | 'accepted' | 'rejected' | 'waitlisted'
 
+interface StartupProblem {
+  startup_name: string | null
+  startup_problem: string | null
+  startup_pm_name: string | null
+  zoom_link: string | null
+  miro_link: string | null
+  slack_link: string | null
+  deck_template_link: string | null
+  problem_brief_link: string | null
+  interview_guide_link: string | null
+}
+
 interface StatusResult {
   status: Status
   name: string
   applied_at: string
   team: { id: string; name: string } | null
   teammates: string[]
-  links: {
-    zoom: string
-    slack: string
-    deck_template: string
-    problem_brief: string
-  }
+  problem: StartupProblem | null
 }
 
 function ReviewingState({ result }: { result: StatusResult }) {
@@ -60,6 +67,37 @@ function AcceptedState({ result }: { result: StatusResult }) {
         </div>
       )}
 
+      {/* Dashboard CTA */}
+      <div
+        className="rounded-xl p-5 text-left mb-6"
+        style={{ background: '#fffbf5', borderLeft: '4px solid #e8913a', border: '1px solid #fde8c8' }}
+      >
+        <p className="text-base font-semibold text-primary mb-1">🎯 Your Participant Dashboard is ready</p>
+        <p className="text-sm text-slate mb-4">
+          Access your task board, team notes, schedule, and all session links in one place.
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-md"
+          style={{ background: '#e8913a' }}
+        >
+          Open Dashboard →
+        </Link>
+        <p className="text-xs text-slate/60 mt-3">Use the same email to log in</p>
+      </div>
+
+      {result.problem?.startup_problem && (
+        <div className="bg-card border border-gray-100 rounded-xl p-5 text-left mb-6">
+          <p className="text-xs text-slate uppercase tracking-widest mb-2">
+            Your problem — {result.problem.startup_name}
+          </p>
+          {result.problem.startup_pm_name && (
+            <p className="text-xs text-slate mb-3">PM: {result.problem.startup_pm_name}</p>
+          )}
+          <p className="text-sm text-primary leading-relaxed">{result.problem.startup_problem}</p>
+        </div>
+      )}
+
       <div className="bg-card border border-gray-100 rounded-xl p-5 text-left mb-6">
         <p className="text-xs text-slate uppercase tracking-widest mb-3">Weekend schedule (IST)</p>
         <div className="space-y-2 text-sm">
@@ -72,20 +110,29 @@ function AcceptedState({ result }: { result: StatusResult }) {
       <div className="bg-card border border-gray-100 rounded-xl p-5 text-left">
         <p className="text-xs text-slate uppercase tracking-widest mb-3">Links</p>
         <div className="space-y-2">
-          {[
-            'Zoom meeting link',
-            'Slack workspace',
-            'Deck template',
-            'Problem brief',
-          ].map((label) => (
-            <div
-              key={label}
-              className="flex items-center justify-between text-sm"
-            >
-              <span className="text-slate/50">{label}</span>
-              <span className="text-xs text-slate/40 bg-gray-100 px-2 py-0.5 rounded font-mono">
-                Coming soon
-              </span>
+          {([
+            { label: 'Zoom meeting link',  href: result.problem?.zoom_link },
+            { label: 'Slack workspace',    href: result.problem?.slack_link },
+            { label: 'Deck template',      href: result.problem?.deck_template_link },
+            { label: 'Problem brief',      href: result.problem?.problem_brief_link },
+            { label: 'Interview guide',    href: result.problem?.interview_guide_link },
+          ] as { label: string; href: string | null | undefined }[]).map(({ label, href }) => (
+            <div key={label} className="flex items-center justify-between text-sm">
+              <span className={href ? 'text-slate' : 'text-slate/50'}>{label}</span>
+              {href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-accent hover:underline font-medium"
+                >
+                  Open →
+                </a>
+              ) : (
+                <span className="text-xs text-slate/40 bg-gray-100 px-2 py-0.5 rounded font-mono">
+                  Coming soon
+                </span>
+              )}
             </div>
           ))}
         </div>

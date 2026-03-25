@@ -59,6 +59,7 @@ export async function PATCH(req: NextRequest) {
             teamName: applicant.teams?.name,
             teammateNames,
             statusUrl,
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
           }),
         })
       } else {
