@@ -55,15 +55,28 @@ export type ChecklistItem = {
   sort_order: number
 }
 
+export type Resource = {
+  id: string
+  team_id: string | null
+  title: string
+  url: string
+  description: string | null
+  type: string
+  created_at: string
+}
+
+export type ActivityEvent = {
+  id: string
+  type: 'note' | 'interview'
+  actor_name: string
+  summary: string
+  created_at: string
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function getInitials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
 }
 
 // ── Progress Ring ──────────────────────────────────────────────────────────
@@ -75,22 +88,23 @@ function ProgressRing({ pct }: { pct: number }) {
 
   return (
     <svg width="100" height="100" viewBox="0 0 100 100">
-      {/* track */}
-      <circle cx="50" cy="50" r={r} fill="none" stroke="#e8e5df" strokeWidth="8" />
-      {/* progress */}
+      <circle cx="50" cy="50" r={r} fill="none" stroke="var(--dc-ring-track)" strokeWidth="8" />
       <circle
-        cx="50"
-        cy="50"
-        r={r}
-        fill="none"
-        stroke="#e8913a"
+        cx="50" cy="50" r={r} fill="none"
+        stroke="url(#ring-gradient)"
         strokeWidth="8"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${circ - dash}`}
         strokeDashoffset={circ / 4}
         style={{ transition: 'stroke-dasharray 0.6s ease' }}
       />
-      <text x="50" y="54" textAnchor="middle" fontSize="18" fontWeight="700" fill="#1a1a2e">
+      <defs>
+        <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--dc-accent)" />
+          <stop offset="100%" stopColor="var(--dc-accent-2)" />
+        </linearGradient>
+      </defs>
+      <text x="50" y="54" textAnchor="middle" fontSize="18" fontWeight="700" fill="var(--dc-text-1)">
         {pct}%
       </text>
     </svg>
@@ -127,13 +141,15 @@ function WelcomeCard({
 
   return (
     <div
-      className="rounded-2xl p-7 flex flex-col justify-between min-h-52"
+      className="rounded-3xl p-7 flex flex-col justify-between min-h-52"
       style={{
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #2d2b55 100%)',
+        background: 'var(--dc-welcome)',
+        border: '1.5px solid var(--dc-welcome-border)',
+        boxShadow: '0 4px 32px var(--dc-welcome-shadow)',
       }}
     >
       <div>
-        <p className="text-xs font-semibold tracking-widest mb-3" style={{ color: '#e8913a' }}>
+        <p className="text-xs font-semibold tracking-widest mb-3" style={{ color: 'var(--dc-accent)' }}>
           WELCOME BACK
         </p>
         <h2
@@ -141,19 +157,18 @@ function WelcomeCard({
           style={{ fontFamily: 'var(--font-display)' }}
         >
           Hey {name.split(' ')[0]}, you&apos;re in{' '}
-          <span style={{ color: '#e8913a' }}>{teamName ?? 'your team'}</span>
+          <span style={{ color: 'var(--dc-welcome-link-txt)' }}>{teamName ?? 'your team'}</span>
         </h2>
-        <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.65)' }}>
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--dc-welcome-muted)' }}>
           {config?.startup_name
             ? `You're working on ${config.startup_name}'s problem this weekend.`
             : 'Get ready for the weekend.'}{' '}
           {config?.startup_pm_name && (
-            <>Your PM mentor is <span className="text-white font-medium">{config.startup_pm_name}</span>.</>
+            <>Your PM mentor is <span className="font-medium" style={{ color: 'var(--dc-text-1)' }}>{config.startup_pm_name}</span>.</>
           )}
         </p>
       </div>
 
-      {/* Quick-link pills */}
       <div className="flex flex-wrap gap-2 mt-5">
         {quickLinks.map(({ label, href }) =>
           href ? (
@@ -163,7 +178,7 @@ function WelcomeCard({
               target="_blank"
               rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:scale-105"
-              style={{ background: 'rgba(255,255,255,0.12)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+              style={{ background: 'var(--dc-welcome-link-bg)', color: 'var(--dc-welcome-link-txt)', border: '1px solid var(--dc-welcome-link-bd)' }}
             >
               {label} ↗
             </a>
@@ -171,7 +186,7 @@ function WelcomeCard({
             <span
               key={label}
               className="px-3 py-1.5 rounded-full text-xs font-medium"
-              style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.1)' }}
+              style={{ background: 'rgba(128,128,128,0.08)', color: 'var(--dc-text-4)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               {label}
             </span>
@@ -202,49 +217,44 @@ function ProgressCard({
   const checkPct = totalChecks > 0 ? Math.round((doneChecks / totalChecks) * 100) : 0
 
   return (
-    <div
-      className="rounded-2xl p-6 flex flex-col gap-5 h-full"
-      style={{ background: '#fff', border: '1px solid #e8e5df' }}
-    >
-      <p className="text-xs font-semibold tracking-widest" style={{ color: '#64748b' }}>
+    <div className="dark-card rounded-3xl p-6 flex flex-col gap-5 h-full">
+      <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>
         YOUR PROGRESS
       </p>
 
-      {/* Ring */}
       <div className="flex flex-col items-center gap-1">
         {loadingTasks ? (
-          <div className="w-[100px] h-[100px] rounded-full animate-pulse bg-gray-100 flex items-center justify-center">
-            <div className="w-16 h-16 rounded-full bg-gray-200" />
+          <div className="w-[100px] h-[100px] rounded-full animate-pulse bg-[var(--dc-note)] flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-[var(--dc-border)]" />
           </div>
         ) : (
           <ProgressRing pct={taskPct} />
         )}
         {loadingTasks ? (
-          <div className="h-3 w-28 rounded animate-pulse bg-gray-200 mt-1" />
+          <div className="h-3 w-28 rounded animate-pulse bg-[var(--dc-border)] mt-1" />
         ) : (
-          <p className="text-xs text-center" style={{ color: '#64748b' }}>
+          <p className="text-xs text-center" style={{ color: 'var(--dc-text-2)' }}>
             {doneTasks} of {totalTasks} tasks done
           </p>
         )}
       </div>
 
-      {/* Pre-weekend checklist bar */}
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
-          <p className="text-xs font-medium" style={{ color: '#1a1a2e' }}>Pre-weekend checklist</p>
+          <p className="text-xs font-medium" style={{ color: 'var(--dc-text-1)' }}>Pre-weekend checklist</p>
           {!loadingChecklist && (
-            <p className="text-xs tabular-nums" style={{ color: '#64748b' }}>
+            <p className="text-xs tabular-nums" style={{ color: 'var(--dc-text-2)' }}>
               {doneChecks}/{totalChecks}
             </p>
           )}
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#e8e5df' }}>
+        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--dc-border)' }}>
           {loadingChecklist ? (
-            <div className="h-full w-1/3 rounded-full animate-pulse bg-gray-300" />
+            <div className="h-full w-1/3 rounded-full animate-pulse bg-[#3a3870]" />
           ) : (
             <div
               className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${checkPct}%`, background: '#e8913a' }}
+              style={{ width: `${checkPct}%`, background: 'var(--dc-gradient)' }}
             />
           )}
         </div>
@@ -255,42 +265,29 @@ function ProgressCard({
 
 function ProblemBriefCard({ config }: { config: StartupProblem | null }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1px solid #e8e5df' }}
-    >
-      {/* Header */}
-      <div
-        className="px-6 py-4 flex items-center gap-2 border-b"
-        style={{ background: '#fffbf5', borderColor: '#e8e5df' }}
-      >
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-6 py-4 flex items-center gap-2 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
         <span className="text-lg">📋</span>
-        <h3 className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>
+        <h3 className="text-sm font-semibold truncate" style={{ color: 'var(--dc-text-1)' }}>
           The Problem Brief
           {config?.startup_name && (
-            <span style={{ color: '#e8913a' }}> — {config.startup_name}</span>
+            <span style={{ color: 'var(--dc-accent)' }}> — {config.startup_name}</span>
           )}
         </h3>
       </div>
-
-      {/* Body */}
-      <div className="px-6 py-5 bg-white">
+      <div className="px-6 py-5">
         {config?.startup_problem ? (
-          <p className="text-sm leading-relaxed" style={{ color: '#1a1a2e' }}>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--dc-text-1)' }}>
             {config.startup_problem}
           </p>
         ) : (
-          <p className="text-sm italic" style={{ color: '#64748b' }}>
+          <p className="text-sm italic" style={{ color: 'var(--dc-text-3)' }}>
             Problem brief not yet published. Check back soon.
           </p>
         )}
-
         {config?.startup_data_description && (
-          <p
-            className="text-xs mt-4 pt-4 border-t"
-            style={{ color: '#64748b', borderColor: '#e8e5df' }}
-          >
-            <span className="font-medium">Data provided:</span>{' '}
+          <p className="text-xs mt-4 pt-4 border-t" style={{ color: 'var(--dc-text-2)', borderColor: 'var(--dc-border)' }}>
+            <span className="font-medium" style={{ color: 'var(--dc-text-1)' }}>Data provided:</span>{' '}
             {config.startup_data_description}
           </p>
         )}
@@ -301,16 +298,13 @@ function ProblemBriefCard({ config }: { config: StartupProblem | null }) {
 
 function QuickLinksCard({ config }: { config: StartupProblem | null }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1px solid #e8e5df' }}
-    >
-      <div className="px-5 py-4 border-b" style={{ background: '#fafaf8', borderColor: '#e8e5df' }}>
-        <p className="text-xs font-semibold tracking-widest" style={{ color: '#64748b' }}>
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-5 py-4 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
+        <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>
           QUICK LINKS
         </p>
       </div>
-      <div className="bg-white divide-y" style={{ borderColor: '#e8e5df' }}>
+      <div className="divide-y" style={{ borderColor: 'var(--dc-note)' }}>
         {LINK_DEFS.map(({ key, emoji, label, desc }) => {
           const href = config?.[key] ?? null
           return (
@@ -320,26 +314,26 @@ function QuickLinksCard({ config }: { config: StartupProblem | null }) {
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 px-5 py-3.5 hover:bg-orange-50 transition-colors"
+                  className="flex items-center gap-3 px-5 py-3.5 transition-colors"
+                  style={{ borderColor: 'var(--dc-note)' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dc-link-hover)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <span className="text-lg w-7 shrink-0">{emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: '#1a1a2e' }}>{label}</p>
-                    <p className="text-xs" style={{ color: '#64748b' }}>{desc}</p>
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--dc-text-1)' }}>{label}</p>
+                    <p className="text-xs truncate" style={{ color: 'var(--dc-text-2)' }}>{desc}</p>
                   </div>
-                  <span
-                    className="text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: '#e8913a' }}
-                  >
+                  <span className="text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: 'var(--dc-accent)' }}>
                     →
                   </span>
                 </a>
               ) : (
                 <div className="flex items-center gap-3 px-5 py-3.5">
-                  <span className="text-lg w-7 shrink-0 opacity-40">{emoji}</span>
+                  <span className="text-lg w-7 shrink-0 opacity-30">{emoji}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: '#94a3b8' }}>{label}</p>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>Coming soon</p>
+                    <p className="text-sm font-medium truncate" style={{ color: 'var(--dc-text-3)' }}>{label}</p>
+                    <p className="text-xs" style={{ color: 'var(--dc-text-4)' }}>Coming soon</p>
                   </div>
                 </div>
               )}
@@ -351,61 +345,45 @@ function QuickLinksCard({ config }: { config: StartupProblem | null }) {
   )
 }
 
-function TeamCard({
-  user,
-  teammates,
-}: {
-  user: Applicant
-  teammates: Teammate[]
-}) {
+function TeamCard({ user, teammates }: { user: Applicant; teammates: Teammate[] }) {
   const all = [
     { id: user.id, name: user.name, current_role: user.current_role, isMe: true },
     ...teammates.map((t) => ({ ...t, isMe: false })),
   ]
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1px solid #e8e5df' }}
-    >
-      <div className="px-5 py-4 border-b" style={{ background: '#fafaf8', borderColor: '#e8e5df' }}>
-        <p className="text-xs font-semibold tracking-widest" style={{ color: '#64748b' }}>
-          YOUR TEAM
-        </p>
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-5 py-4 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
+        <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>YOUR TEAM</p>
       </div>
-      <div className="bg-white divide-y" style={{ borderColor: '#e8e5df' }}>
+      <div className="divide-y" style={{ borderColor: 'var(--dc-note)' }}>
         {all.map((member) => (
           <div
             key={member.id}
-            className="flex items-center gap-3 px-5 py-3.5"
-            style={member.isMe ? { background: '#fffbf5' } : {}}
+            className="flex items-center gap-3 px-5 py-3.5 transition-colors"
+            style={member.isMe ? { background: 'var(--dc-active-row)' } : {}}
+            onMouseEnter={(e) => { if (!member.isMe) e.currentTarget.style.background = 'var(--dc-card-hover)' }}
+            onMouseLeave={(e) => { if (!member.isMe) e.currentTarget.style.background = 'transparent' }}
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{
-                background: member.isMe ? '#e8913a' : '#1a1a2e',
-                color: '#fff',
-              }}
+              style={member.isMe
+                ? { background: 'var(--dc-avatar)', color: '#fff' }
+                : { background: 'var(--dc-avatar-other)', color: 'var(--dc-avatar-other-txt)' }
+              }
             >
               {getInitials(member.name)}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium truncate" style={{ color: '#1a1a2e' }}>
-                  {member.name}
-                </p>
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--dc-text-1)' }}>{member.name}</p>
                 {member.isMe && (
-                  <span
-                    className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0"
-                    style={{ background: '#fef3e2', color: '#e8913a' }}
-                  >
+                  <span className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0" style={{ background: 'var(--dc-you-bg)', color: 'var(--dc-you-color)' }}>
                     You
                   </span>
                 )}
               </div>
-              <p className="text-xs truncate" style={{ color: '#64748b' }}>
-                {member.current_role}
-              </p>
+              <p className="text-xs truncate" style={{ color: 'var(--dc-text-2)' }}>{member.current_role}</p>
             </div>
           </div>
         ))}
@@ -424,43 +402,35 @@ function ChecklistCard({
   loading?: boolean
 }) {
   return (
-    <div
-      className="rounded-2xl overflow-hidden"
-      style={{ border: '1px solid #e8e5df' }}
-    >
-      <div className="px-5 py-4 border-b" style={{ background: '#fafaf8', borderColor: '#e8e5df' }}>
-        <p className="text-xs font-semibold tracking-widest" style={{ color: '#64748b' }}>
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-5 py-4 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
+        <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>
           PRE-WEEKEND CHECKLIST
         </p>
       </div>
-      <div className="bg-white divide-y" style={{ borderColor: '#e8e5df' }}>
-        {loading && (
-          <>
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="flex items-center gap-3 px-5 py-3.5">
-                <div className="w-5 h-5 rounded animate-pulse bg-gray-200 shrink-0" />
-                <div className="h-3 rounded animate-pulse bg-gray-200 flex-1" />
-              </div>
-            ))}
-          </>
-        )}
+      <div className="divide-y" style={{ borderColor: 'var(--dc-note)' }}>
+        {loading && [1, 2, 3, 4].map((n) => (
+          <div key={n} className="flex items-center gap-3 px-5 py-3.5">
+            <div className="w-5 h-5 rounded animate-pulse bg-[var(--dc-border)] shrink-0" />
+            <div className="h-3 rounded animate-pulse bg-[var(--dc-note)] flex-1" />
+          </div>
+        ))}
         {!loading && items.length === 0 && (
-          <p className="text-sm px-5 py-4 italic" style={{ color: '#64748b' }}>
-            No checklist items yet.
-          </p>
+          <p className="text-sm px-5 py-4 italic" style={{ color: 'var(--dc-text-3)' }}>No checklist items yet.</p>
         )}
         {items.map((item) => (
           <button
             key={item.id}
             onClick={() => onToggle(item.id, item.is_done)}
-            className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-gray-50"
+            className="w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors"
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dc-link-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
-            {/* Checkbox */}
             <div
               className="w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all"
               style={{
-                border: item.is_done ? 'none' : '2px solid #e8e5df',
-                background: item.is_done ? '#16a34a' : 'transparent',
+                border: item.is_done ? 'none' : '2px solid var(--dc-border)',
+                background: item.is_done ? 'var(--dc-check-done)' : 'transparent',
               }}
             >
               {item.is_done && (
@@ -472,13 +442,116 @@ function ChecklistCard({
             <span
               className="text-sm transition-all"
               style={{
-                color: item.is_done ? '#94a3b8' : '#1a1a2e',
+                color: item.is_done ? 'var(--dc-text-3)' : 'var(--dc-text-1)',
                 textDecoration: item.is_done ? 'line-through' : 'none',
               }}
             >
               {item.text}
             </span>
           </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Resources Card ─────────────────────────────────────────────────────────
+
+function ResourcesCard({ resources, loading }: { resources: Resource[]; loading?: boolean }) {
+  const TYPE_ICON: Record<string, string> = {
+    link: '🔗', video: '🎥', doc: '📄', template: '📊', guide: '📚',
+  }
+
+  return (
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-5 py-4 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
+        <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>RESOURCES</p>
+      </div>
+      <div className="divide-y" style={{ borderColor: 'var(--dc-note)' }}>
+        {loading && [1, 2, 3].map((n) => (
+          <div key={n} className="flex items-center gap-3 px-5 py-3.5">
+            <div className="w-7 h-7 rounded-lg animate-pulse bg-[var(--dc-border)] shrink-0" />
+            <div className="flex flex-col gap-1.5 flex-1">
+              <div className="h-3 w-40 rounded animate-pulse bg-[var(--dc-border)]" />
+              <div className="h-3 w-28 rounded animate-pulse bg-[var(--dc-note)]" />
+            </div>
+          </div>
+        ))}
+        {!loading && resources.length === 0 && (
+          <p className="text-sm px-5 py-4 italic" style={{ color: 'var(--dc-text-3)' }}>No resources added yet.</p>
+        )}
+        {!loading && resources.map((r) => (
+          <a
+            key={r.id}
+            href={r.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 px-5 py-3.5 transition-colors"
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--dc-link-hover)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span className="text-lg w-7 shrink-0">{TYPE_ICON[r.type] ?? '🔗'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate" style={{ color: 'var(--dc-text-1)' }}>{r.title}</p>
+              {r.description && (
+                <p className="text-xs truncate" style={{ color: 'var(--dc-text-2)' }}>{r.description}</p>
+              )}
+            </div>
+            <span className="text-xs shrink-0" style={{ color: 'var(--dc-accent)' }}>→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Activity Feed ───────────────────────────────────────────────────────────
+
+function ActivityFeed({ events, loading }: { events: ActivityEvent[]; loading?: boolean }) {
+  function formatRelative(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const mins = Math.floor(diff / 60000)
+    if (mins < 1) return 'just now'
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `${hours}h ago`
+    return `${Math.floor(hours / 24)}d ago`
+  }
+
+  const TYPE_ICON: Record<string, string> = { note: '📝', interview: '🎤' }
+
+  return (
+    <div className="dark-card rounded-3xl overflow-hidden">
+      <div className="px-5 py-4 border-b" style={{ background: 'var(--dc-elevated)', borderColor: 'var(--dc-border)' }}>
+        <p className="text-xs font-semibold tracking-widest" style={{ color: 'var(--dc-text-3)' }}>TEAM ACTIVITY</p>
+      </div>
+      <div className="divide-y" style={{ borderColor: 'var(--dc-note)' }}>
+        {loading && [1, 2, 3].map((n) => (
+          <div key={n} className="flex items-center gap-3 px-5 py-3.5">
+            <div className="w-6 h-6 rounded-full animate-pulse bg-[var(--dc-border)] shrink-0" />
+            <div className="h-3 rounded animate-pulse bg-[var(--dc-note)] flex-1" />
+            <div className="h-3 w-10 rounded animate-pulse bg-[var(--dc-border)]" />
+          </div>
+        ))}
+        {!loading && events.length === 0 && (
+          <p className="text-sm px-5 py-4 italic" style={{ color: 'var(--dc-text-3)' }}>No activity yet. Start posting notes or interviews.</p>
+        )}
+        {!loading && events.map((e) => (
+          <div
+            key={e.id}
+            className="flex items-center gap-3 px-5 py-3.5"
+            onMouseEnter={(evt) => (evt.currentTarget.style.background = 'var(--dc-link-hover)')}
+            onMouseLeave={(evt) => (evt.currentTarget.style.background = 'transparent')}
+          >
+            <span className="text-base w-6 shrink-0">{TYPE_ICON[e.type]}</span>
+            <p className="text-sm flex-1 min-w-0 truncate" style={{ color: 'var(--dc-text-1)' }}>
+              <span className="font-medium" style={{ color: 'var(--dc-text-1)' }}>{e.actor_name}</span>
+              {' '}{e.summary}
+            </p>
+            <span className="text-xs shrink-0 tabular-nums" style={{ color: 'var(--dc-text-3)' }}>
+              {formatRelative(e.created_at)}
+            </span>
+          </div>
         ))}
       </div>
     </div>
@@ -494,26 +567,21 @@ interface OverviewTabProps {
   problem: StartupProblem | null
   tasks: Task[]
   checklist: ChecklistItem[]
+  resources: Resource[]
+  activity: ActivityEvent[]
   onChecklistToggle: (id: string, currentValue: boolean) => void
   loadingTasks?: boolean
   loadingChecklist?: boolean
+  loadingResources?: boolean
+  loadingActivity?: boolean
 }
 
 export default function OverviewTab({
-  user,
-  team,
-  teammates,
-  problem,
-  tasks,
-  checklist,
-  onChecklistToggle,
-  loadingTasks,
-  loadingChecklist,
+  user, team, teammates, problem, tasks, checklist, resources, activity,
+  onChecklistToggle, loadingTasks, loadingChecklist, loadingResources, loadingActivity,
 }: OverviewTabProps) {
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Row 1 — Welcome (2/3) + Progress (1/3) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <WelcomeCard name={user.name} teamName={team?.name ?? null} config={problem} />
@@ -523,16 +591,18 @@ export default function OverviewTab({
         </div>
       </div>
 
-      {/* Row 2 — Problem brief (full width) */}
       <ProblemBriefCard config={problem} />
 
-      {/* Row 3 — 3-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <QuickLinksCard config={problem} />
         <TeamCard user={user} teammates={teammates} />
         <ChecklistCard items={checklist} onToggle={onChecklistToggle} loading={loadingChecklist} />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <ActivityFeed events={activity} loading={loadingActivity} />
+        <ResourcesCard resources={resources} loading={loadingResources} />
+      </div>
     </div>
   )
 }

@@ -17,9 +17,9 @@
   --color-error: #dc2626;
 
   /* Fonts */
-  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-sans:    var(--font-dm-sans), system-ui, sans-serif;
   --font-display: var(--font-playfair), Georgia, serif;
-  --font-mono: var(--font-dm-mono), monospace;
+  --font-mono:    var(--font-dm-mono), monospace;
 }
 
 body {
@@ -30,16 +30,147 @@ body {
 
 /* Scroll fade-up animation */
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-up {
   animation: fade-up 0.5s ease-out forwards;
+}
+
+/* ── Dashboard color tokens (dark by default) ──────────────────────────── */
+:root {
+  --dc-card:             #131228;
+  --dc-card-hover:       #1c1a3a;
+  --dc-note:             #1f1e3d;
+  --dc-note-hover:       #232150;
+  --dc-elevated:         #1a1836;
+  --dc-input:            #131228;
+  --dc-border:           #252347;
+  --dc-border-hover:     #4a4880;
+  --dc-note-border:      #2d2b55;
+  --dc-divider:          #252347;
+  --dc-text-1:           #e8e5ff;
+  --dc-text-2:           #7b789e;
+  --dc-text-3:           #4d4b6b;
+  --dc-text-4:           #3a3860;
+  --dc-accent:           #6d6af5;
+  --dc-accent-2:         #4a7cf5;
+  --dc-accent-bg:        #1e1b4b;
+  --dc-gradient:         linear-gradient(135deg, #6d6af5, #4a7cf5);
+  --dc-shadow-accent:    rgba(109,106,245,0.18);
+  --dc-avatar:           linear-gradient(135deg, #6d6af5, #4a7cf5);
+  --dc-avatar-other:     #252347;
+  --dc-avatar-other-txt: #7b789e;
+  --dc-you-bg:           #1e1b4b;
+  --dc-you-color:        #818cf8;
+  --dc-active-row:       #1a1440;
+  --dc-link-hover:       #1e1c40;
+  --dc-welcome:          linear-gradient(135deg, #1a0f4a 0%, #0d1f5c 100%);
+  --dc-welcome-border:   #2d2b6e;
+  --dc-welcome-shadow:   rgba(109,106,245,0.2);
+  --dc-welcome-muted:    rgba(232,229,255,0.6);
+  --dc-welcome-link-bg:  rgba(109,106,245,0.2);
+  --dc-welcome-link-bd:  rgba(109,106,245,0.35);
+  --dc-welcome-link-txt: #c4c2ff;
+  --dc-ring-track:       #252347;
+  --dc-check-done:       #34d399;
+  --dc-col-todo:         #131228;
+  --dc-col-prog:         #1a1030;
+  --dc-col-rev:          #0f1830;
+  --dc-col-done:         #0a2018;
+  --dc-day-fri:          #1a1030;
+  --dc-day-sat:          #0f1830;
+  --dc-day-sun:          #0a2018;
+  --dc-insight-bg:       #1e1b4b;
+  --dc-insight-color:    #818cf8;
+  --dc-decision-bg:      #2d1408;
+  --dc-decision-color:   #fdba74;
+  --dc-risk-bg:          #3b0a0a;
+  --dc-risk-color:       #fca5a5;
+  --dc-high-bg:          #3b0a0a;
+  --dc-high-color:       #fca5a5;
+  --dc-med-bg:           #2d1408;
+  --dc-med-color:        #fdba74;
+  --dc-low-bg:           #052e16;
+  --dc-low-color:        #86efac;
+  --dc-indiv-bg:         #1e1b4b;
+  --dc-indiv-color:      #818cf8;
+  --dc-collab-bg:        #134e4a;
+  --dc-collab-color:     #34d399;
+}
+
+/* ── Dashboard LIGHT theme overrides ───────────────────────────────────── */
+.dashboard-light {
+  --dc-card:             #ffffff;
+  --dc-card-hover:       #fff8f3;
+  --dc-note:             #ffffff;
+  --dc-note-hover:       #fff5ee;
+  --dc-elevated:         #f5f3f0;
+  --dc-input:            #fafaf8;
+  --dc-border:           #e8e0d8;
+  --dc-border-hover:     #e8913a;
+  --dc-note-border:      #ede8e3;
+  --dc-divider:          #e8e0d8;
+  --dc-text-1:           #1a1a2e;
+  --dc-text-2:           #64748b;
+  --dc-text-3:           #94a3b8;
+  --dc-text-4:           #cbd5e1;
+  --dc-accent:           #e8913a;
+  --dc-accent-2:         #d4782a;
+  --dc-accent-bg:        #fff7ed;
+  --dc-gradient:         linear-gradient(135deg, #e8913a, #d4782a);
+  --dc-shadow-accent:    rgba(232,145,58,0.15);
+  --dc-avatar:           linear-gradient(135deg, #e8913a, #d4782a);
+  --dc-avatar-other:     #f0ece8;
+  --dc-avatar-other-txt: #64748b;
+  --dc-you-bg:           #fff7ed;
+  --dc-you-color:        #d97706;
+  --dc-active-row:       #fff8f3;
+  --dc-link-hover:       #fff5ee;
+  --dc-welcome:          linear-gradient(135deg, #fff7ed 0%, #fef3e2 100%);
+  --dc-welcome-border:   #f4c78a;
+  --dc-welcome-shadow:   rgba(232,145,58,0.15);
+  --dc-welcome-muted:    rgba(26,26,46,0.55);
+  --dc-welcome-link-bg:  rgba(232,145,58,0.12);
+  --dc-welcome-link-bd:  rgba(232,145,58,0.4);
+  --dc-welcome-link-txt: #92400e;
+  --dc-ring-track:       #e8e0d8;
+  --dc-check-done:       #e8913a;
+  --dc-col-todo:         #ffffff;
+  --dc-col-prog:         #fff9f5;
+  --dc-col-rev:          #f5f9ff;
+  --dc-col-done:         #f5fff8;
+  --dc-day-fri:          #fff7ed;
+  --dc-day-sat:          #eff6ff;
+  --dc-day-sun:          #f0fdf4;
+  --dc-insight-bg:       #fffbeb;
+  --dc-insight-color:    #d97706;
+  --dc-decision-bg:      #fff7ed;
+  --dc-decision-color:   #c2410c;
+  --dc-risk-bg:          #fef2f2;
+  --dc-risk-color:       #dc2626;
+  --dc-high-bg:          #fef2f2;
+  --dc-high-color:       #dc2626;
+  --dc-med-bg:           #fff7ed;
+  --dc-med-color:        #c2410c;
+  --dc-low-bg:           #f0fdf4;
+  --dc-low-color:        #16a34a;
+  --dc-indiv-bg:         #fff7ed;
+  --dc-indiv-color:      #d97706;
+  --dc-collab-bg:        #f0fdf4;
+  --dc-collab-color:     #16a34a;
+}
+
+/* ── Dashboard dark card ────────────────────────────────────────────────── */
+.dark-card {
+  background: var(--dc-card);
+  border: 1.5px solid var(--dc-border);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.dark-card:hover {
+  background: var(--dc-card-hover);
+  border-color: var(--dc-border-hover);
+  box-shadow: 0 4px 24px var(--dc-shadow-accent);
 }
