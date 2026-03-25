@@ -1,8 +1,9 @@
 import { supabaseAdmin } from '@/lib/supabase'
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json()
+  const { email, password } = await req.json()
 
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -22,6 +23,19 @@ export async function POST(req: NextRequest) {
       { status: 401 }
     )
   }
+
+  // ── Password check ──────────────────────────────────────────────────────
+  if (applicant.password_hash) {
+    // Password is set — require it
+    if (!password) {
+      return NextResponse.json({ requiresPassword: true }, { status: 200 })
+    }
+    const valid = await bcrypt.compare(password, applicant.password_hash)
+    if (!valid) {
+      return NextResponse.json({ error: 'Incorrect password.' }, { status: 401 })
+    }
+  }
+  // If no password_hash, first-time login — allow through, flag mustSetPassword
 
   // Fetch teammates
   let teammates: { id: string; name: string; current_role: string }[] = []
@@ -62,10 +76,9 @@ export async function POST(req: NextRequest) {
     },
     team: team ? { id: team.id, name: team.name } : null,
     teammates,
-    // problem is the startup's problem assigned to this team
     problem: team?.startup_problems ?? null,
-    // pm_feedback is per team
     pmFeedback: team?.pm_feedback ?? null,
     cohortDate: cohortConfig?.cohort_date ?? null,
+    mustSetPassword: !applicant.password_hash, // true on first login
   })
 }

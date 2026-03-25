@@ -37,12 +37,15 @@ type DashboardData = {
   problem: StartupProblem | null
   pmFeedback: string | null
   cohortDate: string | null
+  mustSetPassword?: boolean
 }
 
 // ── Login screen ───────────────────────────────────────────────────────────
 
 function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: string) => void }) {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [step, setStep] = useState<'email' | 'password'>('email')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -55,15 +58,19 @@ function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: st
       const res = await fetch('/api/dashboard/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), password: step === 'password' ? password : undefined }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        setError(
-          'No accepted application found for this email. Check your status page if you\'re unsure.'
-        )
+        setError(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
+
+      // Server says this account has a password — show password field
+      if (data.requiresPassword) {
+        setStep('password')
         return
       }
 
@@ -75,22 +82,25 @@ function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: st
     }
   }
 
+  const inputStyle = {
+    border: '1.5px solid #252347',
+    background: '#1f1e3d',
+    color: '#e8e5ff',
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#09091f' }}>
-      {/* Header */}
       <header className="h-14 flex items-center px-6" style={{ background: '#060614', borderBottom: '1px solid #1a1836' }}>
         <span className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)', color: '#e8e5ff' }}>
           Micro-PM Residency
         </span>
       </header>
 
-      {/* Centered card */}
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div
           className="w-full max-w-md rounded-3xl p-8 sm:p-10"
           style={{ background: '#131228', border: '1.5px solid #252347', boxShadow: '0 4px 32px rgba(0,0,0,0.4)' }}
         >
-          {/* Logo mark */}
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center mb-6"
             style={{ background: 'linear-gradient(135deg, #6d6af5, #4a7cf5)' }}
@@ -104,27 +114,55 @@ function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: st
             Participant Dashboard
           </h1>
           <p className="text-sm mb-8" style={{ color: '#7b789e' }}>
-            Enter the email you applied with to access your dashboard.
+            {step === 'email'
+              ? 'Enter the email you applied with to access your dashboard.'
+              : `Enter your password for ${email}`}
           </p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="email" className="text-sm font-medium" style={{ color: '#e8e5ff' }}>
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                style={{ border: '1.5px solid #252347', background: '#1f1e3d', color: '#e8e5ff' }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#6d6af5')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#252347')}
-              />
-            </div>
+            {step === 'email' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium" style={{ color: '#e8e5ff' }}>Email address</label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                  style={inputStyle}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = '#6d6af5')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '#252347')}
+                />
+              </div>
+            )}
+
+            {step === 'password' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium" style={{ color: '#e8e5ff' }}>Password</label>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                  style={inputStyle}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = '#6d6af5')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = '#252347')}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setStep('email'); setPassword(''); setError('') }}
+                  className="text-xs text-left mt-1"
+                  style={{ color: '#4d4b6b' }}
+                >
+                  ← Use a different email
+                </button>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm px-4 py-3 rounded-xl" style={{ background: '#3b0a0a', color: '#fca5a5', border: '1px solid #7f1d1d' }}>
@@ -134,15 +172,15 @@ function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: st
 
             <button
               type="submit"
-              disabled={loading || !email}
-              className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-all"
+              disabled={loading || !email || (step === 'password' && !password)}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
               style={{
-                background: loading || !email ? '#1f1e3d' : 'linear-gradient(135deg, #6d6af5, #4a7cf5)',
-                color: loading || !email ? '#4d4b6b' : '#fff',
-                cursor: loading || !email ? 'not-allowed' : 'pointer',
+                background: loading ? '#1f1e3d' : 'linear-gradient(135deg, #6d6af5, #4a7cf5)',
+                color: loading ? '#4d4b6b' : '#fff',
+                cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? 'Checking…' : 'Access Dashboard'}
+              {loading ? 'Checking…' : step === 'email' ? 'Continue' : 'Sign In'}
             </button>
           </form>
 
@@ -153,6 +191,99 @@ function LoginScreen({ onSuccess }: { onSuccess: (data: DashboardData, email: st
             </a>
           </p>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Set password banner ────────────────────────────────────────────────────
+
+function SetPasswordBanner({ email, onDone }: { email: string; onDone: () => void }) {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
+    setSaving(true)
+    const res = await fetch('/api/dashboard/set-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    setSaving(false)
+    if (res.ok) { onDone() } else { setError('Failed to set password. Try again.') }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        className="w-full max-w-md rounded-3xl p-8"
+        style={{ background: '#131228', border: '1.5px solid #252347', boxShadow: '0 8px 48px rgba(0,0,0,0.6)' }}
+      >
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-5" style={{ background: '#1e1b4b' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+
+        <h2 className="text-xl font-bold mb-1" style={{ fontFamily: 'var(--font-display)', color: '#e8e5ff' }}>
+          Set your password
+        </h2>
+        <p className="text-sm mb-6" style={{ color: '#7b789e' }}>
+          Secure your account so only you can access this dashboard. You&apos;ll use this password from next login.
+        </p>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Choose a password (min 8 characters)"
+            autoFocus
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+            style={{ background: '#1f1e3d', border: '1.5px solid #252347', color: '#e8e5ff' }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = '#6d6af5')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = '#252347')}
+          />
+          <input
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="Confirm password"
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+            style={{ background: '#1f1e3d', border: '1.5px solid #252347', color: '#e8e5ff' }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = '#6d6af5')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = '#252347')}
+          />
+
+          {error && (
+            <p className="text-sm px-4 py-3 rounded-xl" style={{ background: '#3b0a0a', color: '#fca5a5', border: '1px solid #7f1d1d' }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving || !password || !confirm}
+            className="w-full py-3 rounded-xl text-sm font-semibold mt-1"
+            style={{
+              background: saving || !password || !confirm ? '#1f1e3d' : 'linear-gradient(135deg, #6d6af5, #4a7cf5)',
+              color: saving || !password || !confirm ? '#4d4b6b' : '#fff',
+              cursor: saving || !password || !confirm ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {saving ? 'Saving…' : 'Set Password & Continue'}
+          </button>
+        </form>
       </div>
     </div>
   )
@@ -199,6 +330,8 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview')
   const [hydrated, setHydrated] = useState(false)
+  const [mustSetPassword, setMustSetPassword] = useState(false)
+  const [authEmail, setAuthEmail] = useState('')
 
   useEffect(() => {
     let cached: DashboardData | null = null
@@ -251,7 +384,9 @@ export default function DashboardPage() {
   function handleAuthSuccess(data: DashboardData, email: string) {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(data))
     sessionStorage.setItem(EMAIL_KEY, email)
+    setAuthEmail(email)
     setDashboardData(data)
+    if (data.mustSetPassword) setMustSetPassword(true)
   }
 
   // Fetch tasks + checklist once authenticated
@@ -444,6 +579,12 @@ export default function DashboardPage() {
 
   return (
     <>
+      {mustSetPassword && (
+        <SetPasswordBanner
+          email={authEmail}
+          onDone={() => setMustSetPassword(false)}
+        />
+      )}
       {toast && <ErrorToast message={toast} onDismiss={() => setToast(null)} />}
       <DashboardLayout
         name={applicant.name}
