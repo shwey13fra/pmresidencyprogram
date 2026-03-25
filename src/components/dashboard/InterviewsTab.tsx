@@ -31,7 +31,7 @@ function getInitials(name: string) {
 
 function MicButton({ onAppend }: { onAppend: (text: string) => void }) {
   const [listening, setListening] = useState(false)
-  const [supported, setSupported] = useState(false)
+  const [supported, setSupported] = useState(true) // optimistic — hide only if confirmed unsupported
   const recRef = useRef<any>(null)
 
   useEffect(() => {
@@ -41,7 +41,7 @@ function MicButton({ onAppend }: { onAppend: (text: string) => void }) {
 
   function toggle() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return
+    if (!SR) { setSupported(false); return }
 
     if (listening) {
       recRef.current?.stop()
@@ -74,33 +74,30 @@ function MicButton({ onAppend }: { onAppend: (text: string) => void }) {
     <button
       type="button"
       onClick={toggle}
-      title={listening ? 'Stop recording' : 'Voice input'}
-      className="flex items-center justify-center rounded-lg transition-all shrink-0"
+      title={listening ? 'Stop recording' : 'Speak to fill this field'}
+      className="flex items-center gap-1.5 rounded-lg px-2 transition-all shrink-0"
       style={{
-        width: 30, height: 30,
+        height: 28,
         background: listening ? 'rgba(220,38,38,0.12)' : 'var(--dc-note)',
         border: `1.5px solid ${listening ? '#dc2626' : 'var(--dc-border)'}`,
         color: listening ? '#dc2626' : 'var(--dc-text-3)',
       }}
     >
       {listening ? (
-        // Pulsing stop icon
-        <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <span
-            style={{
-              width: 8, height: 8, borderRadius: '50%', background: '#dc2626',
-              animation: 'pulse 1s ease-in-out infinite',
-            }}
-          />
-        </span>
+        <>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', display: 'inline-block', animation: 'pulse 1s ease-in-out infinite' }} />
+          <span style={{ fontSize: 11 }}>Recording…</span>
+        </>
       ) : (
-        // Mic icon
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="8" y1="23" x2="16" y2="23" />
-        </svg>
+        <>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
+          </svg>
+          <span style={{ fontSize: 11 }}>Voice</span>
+        </>
       )}
     </button>
   )
@@ -352,6 +349,14 @@ export default function InterviewsTab({
   onAddInterview, onDeleteInterview, loading,
 }: InterviewsTabProps) {
   const [showForm, setShowForm] = useState(false)
+  // Auto-open form when there are no interviews
+  const autoOpened = useRef(false)
+  useEffect(() => {
+    if (!loading && interviews.length === 0 && !autoOpened.current) {
+      autoOpened.current = true
+      setShowForm(true)
+    }
+  }, [loading, interviews.length])
 
   function getName(authorId: string) {
     if (authorId === user.id) return user.name
