@@ -15,19 +15,19 @@ const COLUMNS: {
 }[] = [
   { status: 'todo',        label: 'To Do',       dot: '#5b5a8a', bg: 'var(--dc-col-todo)', border: 'var(--dc-border)', badge: 'var(--dc-note)', badgeText: '#5b5a8a' },
   { status: 'in_progress', label: 'In Progress',  dot: '#a78bfa', bg: 'var(--dc-col-prog)', border: 'var(--dc-border)', badge: 'var(--dc-note)', badgeText: '#a78bfa' },
-  { status: 'review',      label: 'Review',       dot: '#60a5fa', bg: 'var(--dc-col-rev)', border: 'var(--dc-border)', badge: 'var(--dc-note)', badgeText: '#60a5fa' },
+  { status: 'review',      label: 'Review',       dot: '#60a5fa', bg: 'var(--dc-col-rev)',  border: 'var(--dc-border)', badge: 'var(--dc-note)', badgeText: '#60a5fa' },
   { status: 'done',        label: 'Done',         dot: '#34d399', bg: 'var(--dc-col-done)', border: 'var(--dc-border)', badge: 'var(--dc-note)', badgeText: '#34d399' },
 ]
 
 const TYPE_STYLE: Record<Task['type'], { bg: string; color: string; label: string }> = {
-  individual:    { bg: 'var(--dc-indiv-bg)', color: 'var(--dc-indiv-color)', label: 'Individual' },
+  individual:    { bg: 'var(--dc-indiv-bg)',  color: 'var(--dc-indiv-color)',  label: 'Individual' },
   collaborative: { bg: 'var(--dc-collab-bg)', color: 'var(--dc-collab-color)', label: 'Collaborative' },
 }
 
 const PRIORITY_STYLE: Record<Task['priority'], { bg: string; color: string; label: string }> = {
-  high:   { bg: 'var(--dc-high-bg)', color: 'var(--dc-high-color)', label: 'High' },
-  medium: { bg: 'var(--dc-med-bg)', color: 'var(--dc-med-color)', label: 'Medium' },
-  low:    { bg: 'var(--dc-low-bg)', color: 'var(--dc-low-color)', label: 'Low' },
+  high:   { bg: 'var(--dc-high-bg)',  color: 'var(--dc-high-color)',  label: 'High' },
+  medium: { bg: 'var(--dc-med-bg)',   color: 'var(--dc-med-color)',   label: 'Medium' },
+  low:    { bg: 'var(--dc-low-bg)',   color: 'var(--dc-low-color)',   label: 'Low' },
 }
 
 function Badge({ style }: { style: { bg: string; color: string; label: string } }) {
@@ -46,11 +46,14 @@ function AssigneeLabel({ task, user, teammates, teamName }: { task: Task; user: 
 }
 
 function TaskCard({
-  task, user, teammates, teamName, onDragStart, updating,
+  task, user, teammates, teamName, onDragStart, updating, onAssign,
 }: {
   task: Task; user: Applicant; teammates: Teammate[]; teamName: string
   onDragStart: (id: string) => void; updating?: boolean
+  onAssign: (taskId: string) => void
 }) {
+  const canTakeIt = task.type === 'individual' && !task.assignee_id
+
   return (
     <div
       draggable
@@ -70,25 +73,140 @@ function TaskCard({
         <Badge style={TYPE_STYLE[task.type]} />
         <Badge style={PRIORITY_STYLE[task.priority]} />
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <AssigneeLabel task={task} user={user} teammates={teammates} teamName={teamName} />
-        {updating && <span className="text-xs" style={{ color: 'var(--dc-text-2)' }}>updating…</span>}
-        {!updating && task.due_label && (
-          <span className="text-xs tabular-nums" style={{ color: 'var(--dc-text-3)' }}>{task.due_label}</span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {updating && <span className="text-xs" style={{ color: 'var(--dc-text-2)' }}>updating…</span>}
+          {!updating && task.due_label && (
+            <span className="text-xs tabular-nums" style={{ color: 'var(--dc-text-3)' }}>{task.due_label}</span>
+          )}
+          {!updating && canTakeIt && (
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); onAssign(task.id) }}
+              className="text-xs px-2 py-0.5 rounded-lg font-medium transition-all"
+              style={{ background: 'var(--dc-accent-bg)', color: 'var(--dc-accent)', border: '1px solid var(--dc-border)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--dc-accent)'; (e.currentTarget as HTMLElement).style.color = '#fff' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--dc-accent-bg)'; (e.currentTarget as HTMLElement).style.color = 'var(--dc-accent)' }}
+            >
+              Take it
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
+// ── Inline add task form ────────────────────────────────────────────────────
+
+function AddTaskForm({
+  onAdd, onCancel,
+}: {
+  onAdd: (data: { title: string; type: Task['type']; priority: Task['priority'] }) => Promise<void>
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState('')
+  const [type, setType] = useState<Task['type']>('individual')
+  const [priority, setPriority] = useState<Task['priority']>('medium')
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim()) return
+    setSaving(true)
+    await onAdd({ title, type, priority })
+    setSaving(false)
+  }
+
+  const inputStyle = {
+    background: 'var(--dc-card)',
+    border: '1.5px solid var(--dc-border)',
+    color: 'var(--dc-text-1)',
+    borderRadius: '10px',
+    padding: '8px 12px',
+    fontSize: '13px',
+    outline: 'none',
+    width: '100%',
+  }
+
+  const selectStyle = {
+    ...inputStyle,
+    cursor: 'pointer',
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-2xl p-3 flex flex-col gap-2.5"
+      style={{ background: 'var(--dc-note)', border: '1.5px solid var(--dc-accent)', boxShadow: '0 0 0 3px var(--dc-accent-bg)' }}
+    >
+      <input
+        autoFocus
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Task title…"
+        style={inputStyle}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--dc-accent)')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--dc-border)')}
+      />
+      <div className="flex gap-2">
+        <select value={type} onChange={(e) => setType(e.target.value as Task['type'])} style={selectStyle}>
+          <option value="individual">Individual</option>
+          <option value="collaborative">Collaborative</option>
+        </select>
+        <select value={priority} onChange={(e) => setPriority(e.target.value as Task['priority'])} style={selectStyle}>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          disabled={saving || !title.trim()}
+          className="flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all"
+          style={{
+            background: saving || !title.trim() ? 'var(--dc-border)' : 'var(--dc-gradient)',
+            color: saving || !title.trim() ? 'var(--dc-text-3)' : '#fff',
+            cursor: saving || !title.trim() ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Adding…' : 'Add Task'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 rounded-lg text-xs transition-all"
+          style={{ color: 'var(--dc-text-3)', background: 'var(--dc-card)' }}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ── Kanban column ───────────────────────────────────────────────────────────
+
 function KanbanColumn({
-  col, tasks, user, teammates, teamName, draggingId, updatingTaskId, onDragStart, onDrop,
+  col, tasks, user, teammates, teamName, draggingId, updatingTaskId,
+  onDragStart, onDrop, onAssign, onAddTask,
 }: {
   col: typeof COLUMNS[number]; tasks: Task[]; user: Applicant; teammates: Teammate[]; teamName: string
   draggingId: string | null; updatingTaskId?: string | null
   onDragStart: (id: string) => void; onDrop: (status: Status) => void
+  onAssign: (taskId: string) => void
+  onAddTask: (data: { title: string; type: Task['type']; priority: Task['priority'] }) => Promise<void>
 }) {
   const [isOver, setIsOver] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  async function handleAdd(data: { title: string; type: Task['type']; priority: Task['priority'] }) {
+    await onAddTask(data)
+    setShowAddForm(false)
+  }
 
   return (
     <div
@@ -102,6 +220,7 @@ function KanbanColumn({
       onDragLeave={() => setIsOver(false)}
       onDrop={() => { setIsOver(false); onDrop(col.status) }}
     >
+      {/* Column header */}
       <div className="flex items-center justify-between px-1 mb-1">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full" style={{ background: col.dot }} />
@@ -112,14 +231,17 @@ function KanbanColumn({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Task cards */}
+      <div className="flex flex-col gap-2 flex-1">
         {tasks.map((task) => (
           <TaskCard
             key={task.id} task={task} user={user} teammates={teammates}
-            teamName={teamName} onDragStart={onDragStart} updating={updatingTaskId === task.id}
+            teamName={teamName} onDragStart={onDragStart}
+            updating={updatingTaskId === task.id}
+            onAssign={onAssign}
           />
         ))}
-        {tasks.length === 0 && (
+        {tasks.length === 0 && !showAddForm && (
           <div
             className="rounded-xl border-2 border-dashed flex items-center justify-center h-20"
             style={{ borderColor: col.border }}
@@ -128,18 +250,47 @@ function KanbanColumn({
           </div>
         )}
       </div>
+
+      {/* Add task — only on To Do column */}
+      {col.status === 'todo' && (
+        <div className="mt-auto pt-2">
+          {showAddForm ? (
+            <AddTaskForm onAdd={handleAdd} onCancel={() => setShowAddForm(false)} />
+          ) : (
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="w-full py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+              style={{ color: 'var(--dc-text-3)', background: 'transparent', border: '1.5px dashed var(--dc-border)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--dc-accent)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dc-accent)' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--dc-text-3)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--dc-border)' }}
+            >
+              + Add task
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
+// ── Mobile column ───────────────────────────────────────────────────────────
+
 function MobileColumn({
-  col, tasks, user, teammates, teamName, onDrop,
+  col, tasks, user, teammates, teamName, onDrop, onAssign, onAddTask,
 }: {
   col: typeof COLUMNS[number]; tasks: Task[]; user: Applicant; teammates: Teammate[]; teamName: string
   onDrop: (status: Status) => void
+  onAssign: (taskId: string) => void
+  onAddTask: (data: { title: string; type: Task['type']; priority: Task['priority'] }) => Promise<void>
 }) {
   const [open, setOpen] = useState(col.status === 'todo' || col.status === 'in_progress')
   const [isOver, setIsOver] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  async function handleAdd(data: { title: string; type: Task['type']; priority: Task['priority'] }) {
+    await onAddTask(data)
+    setShowAddForm(false)
+  }
 
   return (
     <div
@@ -167,10 +318,26 @@ function MobileColumn({
       {open && (
         <div className="flex flex-col gap-2 p-3" style={{ background: 'var(--dc-card)' }}>
           {tasks.map((task) => (
-            <TaskCard key={task.id} task={task} user={user} teammates={teammates} teamName={teamName} onDragStart={() => {}} />
+            <TaskCard key={task.id} task={task} user={user} teammates={teammates}
+              teamName={teamName} onDragStart={() => {}} onAssign={onAssign} />
           ))}
-          {tasks.length === 0 && (
+          {tasks.length === 0 && !showAddForm && (
             <p className="text-xs text-center py-3" style={{ color: 'var(--dc-text-4)' }}>No tasks here</p>
+          )}
+          {col.status === 'todo' && (
+            <div className="mt-1">
+              {showAddForm ? (
+                <AddTaskForm onAdd={handleAdd} onCancel={() => setShowAddForm(false)} />
+              ) : (
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="w-full py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5"
+                  style={{ color: 'var(--dc-text-3)', background: 'transparent', border: '1.5px dashed var(--dc-border)' }}
+                >
+                  + Add task
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -178,7 +345,7 @@ function MobileColumn({
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
+// ── Main component ──────────────────────────────────────────────────────────
 
 interface TasksTabProps {
   tasks: Task[]
@@ -186,11 +353,17 @@ interface TasksTabProps {
   teammates: Teammate[]
   teamName: string
   onTaskStatusChange: (taskId: string, newStatus: Status) => void
+  onTaskAssign: (taskId: string) => void
+  onTaskAdd: (data: { title: string; type: Task['type']; priority: Task['priority'] }) => Promise<void>
   loading?: boolean
   updatingTaskId?: string | null
 }
 
-export default function TasksTab({ tasks, user, teammates, teamName, onTaskStatusChange, loading, updatingTaskId }: TasksTabProps) {
+export default function TasksTab({
+  tasks, user, teammates, teamName,
+  onTaskStatusChange, onTaskAssign, onTaskAdd,
+  loading, updatingTaskId,
+}: TasksTabProps) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
   function handleDrop(newStatus: Status) {
@@ -210,10 +383,10 @@ export default function TasksTab({ tasks, user, teammates, teamName, onTaskStatu
         </h2>
         <div className="flex items-center gap-1.5">
           <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: TYPE_STYLE.individual.bg, color: TYPE_STYLE.individual.color }}>
-            Individual
+            Individual — assigned to you
           </span>
           <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ background: TYPE_STYLE.collaborative.bg, color: TYPE_STYLE.collaborative.color }}>
-            Collaborative
+            Collaborative — whole team
           </span>
         </div>
       </div>
@@ -253,6 +426,7 @@ export default function TasksTab({ tasks, user, teammates, teamName, onTaskStatu
               user={user} teammates={teammates} teamName={teamName}
               draggingId={draggingId} updatingTaskId={updatingTaskId}
               onDragStart={setDraggingId} onDrop={handleDrop}
+              onAssign={onTaskAssign} onAddTask={onTaskAdd}
             />
           ))}
         </div>
@@ -263,7 +437,8 @@ export default function TasksTab({ tasks, user, teammates, teamName, onTaskStatu
         <div className="flex flex-col gap-3 md:hidden">
           {COLUMNS.map((col) => (
             <MobileColumn key={col.status} col={col} tasks={byStatus(col.status)}
-              user={user} teammates={teammates} teamName={teamName} onDrop={handleDrop}
+              user={user} teammates={teammates} teamName={teamName}
+              onDrop={handleDrop} onAssign={onTaskAssign} onAddTask={onTaskAdd}
             />
           ))}
         </div>

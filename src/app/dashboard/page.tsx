@@ -500,6 +500,37 @@ export default function DashboardPage() {
     }
   }, [tasks])
 
+  const handleTaskAssign = useCallback(async (taskId: string) => {
+    if (!dashboardData) return
+    setTasks((all) => all.map((t) => t.id === taskId ? { ...t, assignee_id: dashboardData.applicant.id } : t))
+    const res = await fetch('/api/dashboard/tasks', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, assignee_id: dashboardData.applicant.id }),
+    })
+    if (!res.ok) {
+      setTasks((all) => all.map((t) => t.id === taskId ? { ...t, assignee_id: null } : t))
+      setToast('Failed to assign task. Please try again.')
+      setTimeout(() => setToast(null), 4000)
+    }
+  }, [dashboardData])
+
+  const handleTaskAdd = useCallback(async (data: { title: string; type: Task['type']; priority: Task['priority'] }) => {
+    if (!dashboardData) return
+    const res = await fetch('/api/dashboard/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ team_id: dashboardData.team?.id, author_id: dashboardData.applicant.id, ...data }),
+    })
+    if (res.ok) {
+      const { task } = await res.json()
+      setTasks((prev) => [...prev, task])
+    } else {
+      setToast('Failed to add task. Please try again.')
+      setTimeout(() => setToast(null), 4000)
+    }
+  }, [dashboardData])
+
   const handleAddNote = useCallback(async (note: Omit<Note, 'id' | 'created_at'>) => {
     const res = await fetch('/api/dashboard/notes', {
       method: 'POST',
@@ -619,6 +650,8 @@ export default function DashboardPage() {
             teammates={teammates}
             teamName={team?.name ?? 'Your Team'}
             onTaskStatusChange={handleTaskStatusChange}
+            onTaskAssign={handleTaskAssign}
+            onTaskAdd={handleTaskAdd}
             loading={loadingTasks}
             updatingTaskId={updatingTaskId}
           />

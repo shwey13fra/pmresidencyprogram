@@ -599,9 +599,9 @@ export default function OverviewTab({
         <ChecklistCard items={checklist} onToggle={onChecklistToggle} loading={loadingChecklist} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <ActivityFeed events={activity} loading={loadingActivity} />
-        <ResourcesCard resources={resources} loading={loadingResources} />
+        {/* ResourcesCard hidden for MVP — backend ready, re-enable when content is added */}
       </div>
     </div>
   )
